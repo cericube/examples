@@ -16,7 +16,7 @@ public class AdminClientExampleTest {
 	static Properties props;
 
 	// JUnit 5, 모든 테스트 전에 1회 수행 (static 필요)
-	@BeforeAll
+	@BeforeAll  
 	public static void setup() {
 		System.out.println("setup....."); 
 		props = new Properties();
@@ -31,7 +31,7 @@ public class AdminClientExampleTest {
 
 	@Test
 	public void testCreateTopics() throws ExecutionException, InterruptedException {
-		System.out.println("[TEST] 토픽 생성 테스트");
+		System.out.println("[TEST] 토픽 생성 테스트 결과");
 		Properties props = new Properties();
 		props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		AdminClientExample adminExample = new AdminClientExample();
