@@ -37,7 +37,7 @@ public class AdminClientExample {
 		// - 복제 계수: 명시하지 않음 → Kafka 브로커 설정의 default.replication.factor 사용
 		NewTopic topic2 = new NewTopic("topic-auto-replica", Optional.of(3), Optional.empty());
 
-		// topic-config 생성
+		// topic-config 생성 
 		// - 파티션 수: 3
 		// - 복제 계수: 1
 		// - 추가 설정:
