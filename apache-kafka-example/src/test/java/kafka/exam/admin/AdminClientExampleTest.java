@@ -21,10 +21,12 @@ import org.apache.kafka.clients.admin.DeleteConsumerGroupsResult;
 import org.apache.kafka.clients.admin.DeleteTopicsResult;
 import org.apache.kafka.clients.admin.DescribeClusterResult;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
+import org.apache.kafka.clients.admin.ListConsumerGroupOffsetsResult;
 import org.apache.kafka.clients.admin.ListTopicsResult;
 import org.apache.kafka.clients.admin.NewPartitionReassignment;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
@@ -280,15 +282,76 @@ public class AdminClientExampleTest {
 	}
 
 	@Test
+	public void testListConsumerGroupOffsets() {
+		System.out.println("[TEST] 컨슈머 그룹 Offset 조회 테스트...");
+
+		String groupIds = "my-consumer-group";
+		try (AdminClient admin = AdminClient.create(props)) {
+			// 1. 오프셋 정보 요청 → Future로 비동기 반환됨
+			ListConsumerGroupOffsetsResult offsetResult = admin.listConsumerGroupOffsets(groupIds);
+
+			// 2. Future에서 오프셋 결과 Map<TopicPartition, OffsetAndMetadata> 추출
+			Map<TopicPartition, OffsetAndMetadata> offsets = offsetResult.partitionsToOffsetAndMetadata().get();
+
+			// 3. 결과 출력
+			for (Map.Entry<TopicPartition, OffsetAndMetadata> entry : offsets.entrySet()) {
+				TopicPartition tp = entry.getKey(); // 토픽명 + 파티션 번호
+				OffsetAndMetadata metadata = entry.getValue(); // 오프셋 정보
+
+				System.out.printf("▶ 토픽: %s, 파티션: %d, offset: %d%n", tp.topic(), tp.partition(), metadata.offset());
+			}
+		} catch (ExecutionException | InterruptedException e) {
+			System.out.println(e.getMessage());
+		}
+	}
+
+	@Test
+	public void testAlterConsumerGroupOffsets() {
+		System.out.println("[TEST] 컨슈머 그룹 Offset 설정 테스트...");
+		String consumerGroupId = "my-consumer-group";
+
+		try (AdminClient admin = AdminClient.create(props)) {
+			// 1. 오프셋을 변경할 대상 토픽과 파티션 지정
+			TopicPartition targetPartition = new TopicPartition("topic-basic", 0);
+
+			// 2. 새 오프셋 값 설정 (여기서는 0부터 다시 읽도록 설정)
+			OffsetAndMetadata newOffset = new OffsetAndMetadata(0L); // 0: 처음부터
+
+			// 3. 오프셋 변경 요청용 Map 구성
+			Map<TopicPartition, OffsetAndMetadata> newOffsets = Map.of(targetPartition, newOffset);
+
+			// 4. 오프셋 변경 요청 전송
+			admin.alterConsumerGroupOffsets(consumerGroupId, newOffsets).all().get();
+
+			System.out.println("오프셋 변경 완료: group = " + consumerGroupId);
+
+		} catch (ExecutionException | InterruptedException e) {
+			System.out.println(e.getMessage());
+		}
+	}
+
+	@Test
 	public void testAlterPartitionReassignments() {
 		System.out.println("[TEST] 토픽 파티션 수동 재 할당  테스트...");
 
 		try (AdminClient admin = AdminClient.create(props)) {
-			TopicPartition tp = new TopicPartition("my-topic", 0);
-			List<Integer> newReplicas = List.of(2, 3);
-			Map<TopicPartition, Optional<NewPartitionReassignment>> map = Map.of(tp,
+			// 1. 대상 토픽과 파티션 설정
+			// "topic-basic"의 0번 파티션을 대상으로 재할당 진행
+			TopicPartition targetPartition = new TopicPartition("topic-basic", 0);
+
+			// 2. 새롭게 할당할 replica 브로커 목록 정의
+			// 이 예제에서는 브로커 ID 1, 2, 3을 새 replica로 지정
+			List<Integer> newReplicas = List.of(1, 2, 3);
+
+			// 3. 재할당 요청을 위한 Map 구성
+			// Map<파티션, 재할당 정보> 형태로 구성
+			Map<TopicPartition, Optional<NewPartitionReassignment>> reassignment = Map.of(targetPartition,
 					Optional.of(new NewPartitionReassignment(newReplicas)));
-			admin.alterPartitionReassignments(map).all().get();
+
+			// 4. AdminClient를 통해 재할당 요청 전송
+			admin.alterPartitionReassignments(reassignment).all().get();
+
+			System.out.println("파티션 replica 재할당 요청 완료!");
 
 		} catch (ExecutionException | InterruptedException e) {
 			System.out.println(e.getMessage());
