@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.kafka.clients.admin.AdminClient;
@@ -20,9 +21,9 @@ import org.apache.kafka.clients.admin.DeleteConsumerGroupsResult;
 import org.apache.kafka.clients.admin.DeleteTopicsResult;
 import org.apache.kafka.clients.admin.DescribeClusterResult;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
+import org.apache.kafka.clients.admin.ListTopicsResult;
 import org.apache.kafka.clients.admin.NewPartitionReassignment;
 import org.apache.kafka.clients.admin.NewTopic;
-import org.apache.kafka.clients.admin.PartitionReassignment;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Node;
@@ -33,15 +34,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class AdminClientExampleTest {
-
-	AdminClientExample adminExample;
 	String bootstrapServers = "192.168.56.101:9092,192.168.56.102:9092,192.168.56.103:9092";
+
 	Properties props;
 
 	@BeforeEach
 	public void setup() {
 		System.out.println("...setup...");
-		adminExample = new AdminClientExample();
 		props = new Properties();
 		props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 	}
@@ -103,6 +102,20 @@ public class AdminClientExampleTest {
 	}
 
 	@Test
+	public void testListTopics() {
+		System.out.println("[TEST] 토픽 목록 조회 테스트...");
+		try (AdminClient admin = AdminClient.create(props)) {
+			ListTopicsResult listTopicsResult = admin.listTopics();
+			// 2. Future에서 토픽 이름 Set 추출
+			Set<String> topicNames = listTopicsResult.names().get();
+
+			topicNames.forEach(t -> System.out.println("토픽: " + t));
+		} catch (ExecutionException | InterruptedException e) {
+			System.out.println(e.getMessage());
+		}
+	}
+
+	@Test
 	public void testDescribeTopics() {
 		System.out.println("[TEST] 토픽 정보 조회 테스트...");
 
@@ -132,7 +145,7 @@ public class AdminClientExampleTest {
 	public void testDescribeTopicConfigs() {
 		System.out.println("[TEST] 토픽 설정 조회 테스트...");
 
-		String topicName = "test-topic";
+		String topicName = "topic-basic";
 		String configKey = null;
 
 		try (AdminClient admin = AdminClient.create(props)) {
@@ -157,7 +170,7 @@ public class AdminClientExampleTest {
 
 		String topicName = "topic-basic";
 		String configKey = "retention.ms";
-		String configValue = "300000";
+		String configValue = "500000";
 
 		try (AdminClient admin = AdminClient.create(props)) {
 			ConfigResource resource = new ConfigResource(ConfigResource.Type.TOPIC, topicName);
@@ -185,7 +198,7 @@ public class AdminClientExampleTest {
 
 		// List<String> removeTopicNames = List.of("topic-auto-replica",
 		// "topic-config");
-		List<String> topicNames = List.of("topic-basic", "test-topic");
+		List<String> topicNames = List.of("topic-basic");
 
 		try (AdminClient admin = AdminClient.create(props)) {
 			DeleteTopicsResult result = admin.deleteTopics(topicNames);
@@ -268,7 +281,7 @@ public class AdminClientExampleTest {
 
 	@Test
 	public void testAlterPartitionReassignments() {
-		System.out.println("[TEST] 토픽 파티션 수동 재설정  테스트...");
+		System.out.println("[TEST] 토픽 파티션 수동 재 할당  테스트...");
 
 		try (AdminClient admin = AdminClient.create(props)) {
 			TopicPartition tp = new TopicPartition("my-topic", 0);
@@ -282,22 +295,4 @@ public class AdminClientExampleTest {
 		}
 	}
 
-	@Test
-	public void testListPartitionReassignments() {
-		System.out.println("[TEST] 토픽 현재 진행 중인 파티션 재할당 작업 테스트...");
-		try (AdminClient admin = AdminClient.create(props)) {
-			Map<TopicPartition, PartitionReassignment> reassignments = admin.listPartitionReassignments()
-					.reassignments().get();
-
-			if (reassignments.isEmpty()) {
-				System.out.println("재할당 중인 파티션이 없습니다.");
-			} else {
-				reassignments.forEach((tp, r) -> {
-					System.out.printf("▶ %s → %s%n", tp, r.replicas());
-				});
-			}
-		} catch (ExecutionException | InterruptedException e) {
-			System.out.println(e.getMessage());
-		}
-	}
 }
