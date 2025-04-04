@@ -182,7 +182,7 @@ public class KafkaProducerExampleTest {
     }
 
     @Test
-    public void testTransactionalSend() {
+	public void testTransactionalSend() {
         // 트랜잭션 기반 메시지 전송
         props.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "txn-producer-01");
 
